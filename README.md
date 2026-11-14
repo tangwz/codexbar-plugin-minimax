@@ -45,6 +45,8 @@ cp minimax-cn-tokens.js "$HOME/.config/codexbar/providers/minimax-cn-tokens.js"
 
 接入这些功能需要 CodexBar 本体支持社区插件的结构化 Token 历史和动态提供商汇总，不能仅靠修改本插件实现。现有 `costUsage` 契约还要求费用和请求数字段，不能用零费用或零请求冒充未报告的数据。当前分支已提供能力探测保护的 `costUsage` v2 适配；只有 host 声明 `ctx.env.supportsCostUsageV2 === true` 时才发送结构化历史。上游支持尚未发布，现有 0.84.0 安装继续只显示独立卡片。
 
+上游 [PR #5084](https://github.com/steipete/CodexBar/pull/5084) 的当前实现已收敛为接入已有的旧版 `costUsage` 数据，不包含 v2 或未知费用的 Token 历史。因此该 PR 本身不会启用本分支的结构化统计输出；这里仍需等待独立的 host 契约支持。
+
 结构化历史保留服务端直接报告的总量、输入、输出和缓存字段，整数使用十进制字符串传输，日期固定为 `Asia/Shanghai`。缺失日期不补零，未知费用、请求数和币种不伪造；无法安全汇总的溢出历史不会发送给 host。
 
 ## 会话与数据行为
