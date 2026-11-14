@@ -1,0 +1,13 @@
+{
+  "name": "codexbar-plugin-minimax",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MiniMax China Coding Plan quota and token history provider for CodexBar",
+  "scripts": {
+    "check": "node --check minimax-cn-tokens.js && node --check test/minimax-cn-tokens.test.mjs",
+    "test": "node test/minimax-cn-tokens.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
