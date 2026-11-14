@@ -14,6 +14,8 @@
 
 图标使用与内置 MiniMax 相同的波形标志：插件卡片内嵌同源 SVG，菜单栏和提供商切换器在 host 支持时通过 `iconProvider: "minimax"` 复用内置图标。菜单栏使用品牌图标模式时生效；配额仪表模式仍显示仪表。SVG 来源于 [CodexBar](https://github.com/steipete/CodexBar/blob/2329055850fab11cfc4d42dc14b609036f26edb2/Sources/CodexBar/Resources/ProviderIcon-minimax.svg)，相应 MIT 版权和许可声明保留在插件文件中。
 
+界面显示名缩短为 **MiniMax**，插件 ID 仍为 `minimax-cn-tokens`，仅支持中国区。额度和 Token 标签使用中文；百分比额度仅在顶部显示一次，详情只补充实际报告的套餐或剩余额度，不再将浏览器登录方式当作套餐展示。CodexBar 0.84.0 的插件卡片固定带有圆角图标底框和文件名，这两项无法通过纯 JS 隐藏，因此卡片外观尚不能与内置提供商完全一致。
+
 这是社区插件，使用 MiniMax 控制台的内部只读接口，接口或 Cookie 结构变化可能导致插件暂时不可用。
 
 ## 安装
@@ -22,9 +24,9 @@
 
 1. 下载 [minimax-cn-tokens.js](https://raw.githubusercontent.com/tangwz/codexbar-plugin-minimax/main/minimax-cn-tokens.js)。
 2. 在 CodexBar 的 **Settings → Plugins → Install…** 中选择该文件。
-3. 核对权限后批准并启用 **MiniMax CN Tokens**：网络来源仅为 `https://www.minimax.cn`，Cookie 域仅为 `www.minimax.cn`，能力为 `browser-cookies` 和 `http-status`。
+3. 核对权限后批准并启用 **MiniMax**（插件 ID 为 `minimax-cn-tokens`）：网络来源仅为 `https://www.minimax.cn`，Cookie 域仅为 `www.minimax.cn`，能力为 `browser-cookies` 和 `http-status`。
 4. 确保 CodexBar 的浏览器 Cookie 自动导入已开启，并在支持的浏览器中登录 [MiniMax 中国区控制台](https://platform.minimax.cn)。
-5. 刷新插件，在菜单栏的提供商选择中打开 **MiniMax CN Tokens**。
+5. 刷新插件，在菜单栏的提供商选择中打开 **MiniMax**。
 
 也可以手动复制插件，再到 Plugins 中刷新目录、批准并启用：
 
@@ -62,7 +64,7 @@ Token 统计按中国时区 UTC+8 的自然日展示，可能存在服务端更�
 
 最近 30 天的合计仅累加接口实际报告的日期，并标明报告天数；缺失日期不会补零。若某天总量未知、同日数据冲突或合计超出支持的整数范围，合计显示 `—`。数值文本保持整数精度，图表使用近似数值绘制。
 
-如果 Token 接口失败，插件会保留已成功读取的配额，并在 Tokens 中显示 `Unavailable`。没有最近 30 天的日期记录时显示 `Not reported`。
+如果 Token 接口失败，插件会保留已成功读取的配额，并在 Token 用量中显示“暂不可用”。没有最近 30 天的日期记录时显示“暂无数据”。
 
 ## 常见状态
 
@@ -70,7 +72,7 @@ Token 统计按中国时区 UTC+8 的自然日展示，可能存在服务端更�
 | --- | --- |
 | `No complete MiniMax China session found` | 确认浏览器自动导入已开启，并登录中国区控制台；会话需要同时具备两个 Cookie。不要把 Cookie 粘贴到 Issue 中。 |
 | `MiniMax China rejected the browser session` | 在浏览器重新登录后刷新。 |
-| 配额正常、Tokens 为 `Unavailable` | Token 历史请求或响应格式不可用；稍后刷新，配额仍可使用。 |
+| 配额正常、Token 用量为“暂不可用” | Token 历史请求或响应格式不可用；稍后刷新，配额仍可使用。 |
 | 今日 Token 为 `—` | 当天记录或对应字段尚未报告，不代表零用量。 |
 | 替换文件后仍出现旧错误 | 先刷新插件目录，再刷新插件用量。 |
 
@@ -85,6 +87,6 @@ npm run check
 npm test
 ```
 
-27 项离线检查使用合成会话和模拟 HTTP 响应，不读取浏览器，不访问网络。覆盖图标能力协商及旧版兼容、会话与 group 绑定、认证失败后的候选遍历、可选历史失败、取消和网络错误、配额语义、整数精度、日期边界、缺失字段以及重复数据。
+28 项离线检查使用合成会话和模拟 HTTP 响应，不读取浏览器，不访问网络。覆盖紧凑卡片布局、图标能力协商及旧版兼容、会话与 group 绑定、认证失败后的候选遍历、可选历史失败、取消和网络错误、配额语义、整数精度、日期边界、缺失字段以及重复数据。
 
-截至 2026-11-14：本机 CodexBar 0.84.0 已识别、批准并启用插件，配额刷新不再报错；真实 Token 明细和日图在菜单中的显示仍待人工确认。离线测试通过不等于已经完成所有真实账号显示验证。
+截至 2026-11-14：本机 CodexBar 0.84.0 已识别、批准并启用插件，用户提供的菜单截图确认配额、真实 Token 明细及日图可显示；全局统计和分享的限制见上文。

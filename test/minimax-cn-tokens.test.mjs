@@ -176,6 +176,20 @@ test("legacy hosts omit unsupported snapshot branding", async () => {
   }
 });
 
+test("compact presentation avoids duplicate quota rows and a synthetic plan footer", async () => {
+  const payload = quota();
+  delete payload.data.current_subscribe_title;
+  const h = harness({ quota: payload });
+  const result = await h.run();
+  check(h.definition.name === "MiniMax", "The switcher label must fit the native tab.");
+  check(result.primary && result.secondary, "Native quota lanes must remain available.");
+  check(
+    result.details.length === 1 && result.details[0].chart?.points.length === 1,
+    "Percent-only quota details must not repeat the native lanes.",
+  );
+  check(!result.identity, "Browser authentication must not be labeled as a subscription plan.");
+});
+
 test("quota and token statistics use the same complete session", async () => {
   const h = harness();
   const result = await h.run();
@@ -198,11 +212,12 @@ test("quota and token statistics use the same complete session", async () => {
     "Quota percentages changed.",
   );
   check(
-    row(result, "Today tokens") === "1,200" && row(result, "Input tokens") === "1,000",
+    row(result, "\u4eca\u65e5 Token") === "1,200" && row(result, "\u8f93\u5165 Token") === "1,000",
     "Token totals changed.",
   );
   check(
-    row(result, "Cache read tokens") === "400" && row(result, "30d tokens") === "1,200",
+    row(result, "\u7f13\u5b58\u8bfb\u53d6") === "400" &&
+      row(result, "\u8fd1 30 \u5929 Token") === "1,200",
     "Cache subsets must not be added.",
   );
   check(
@@ -249,7 +264,8 @@ test("explicit unlimited quotas remain labeled as unlimited", async () => {
     quota: quota({ current_interval_status: 3, current_interval_used_percent: 0 }),
   }).run();
   check(
-    result.primary.resetDescription === "Unlimited" && row(result, "5-hour quota") === "Unlimited",
+    result.primary.resetDescription === "\u4e0d\u9650\u91cf" &&
+      result.primary.title.includes("\u4e0d\u9650\u91cf"),
     "Unlimited quota must be explicit.",
   );
 });
@@ -315,7 +331,7 @@ for (const status of [401, 403, 404, 500])
     const result = await h.run();
     check(
       result.primary.usedPercent === 4 &&
-        row(result, "Status") === "Unavailable" &&
+        row(result, "\u72b6\u6001") === "\u6682\u4e0d\u53ef\u7528" &&
         h.rejected.length === 0,
       "Optional history discarded quota.",
     );
@@ -332,7 +348,7 @@ test("optional schema and transport failures retain valid quota", async () => {
     });
     const result = await h.run();
     check(
-      result.primary && row(result, "Status") === "Unavailable",
+      result.primary && row(result, "\u72b6\u6001") === "\u6682\u4e0d\u53ef\u7528",
       "Optional failure was not contained.",
     );
   }
@@ -384,7 +400,7 @@ test("China calendar date is independent of UTC", async () => {
     ]),
   }).run();
   check(
-    row(result, "Today tokens") === "10" && row(result, "30d tokens") === "30",
+    row(result, "\u4eca\u65e5 Token") === "10" && row(result, "\u8fd1 30 \u5929 Token") === "30",
     "China day boundary changed.",
   );
 });
@@ -394,19 +410,21 @@ test("latest reported day and update time are not substituted for today", async 
     history: history([{ date: "2026-07-07", total_token: 10 }]),
   }).run();
   check(
-    row(result, "Today tokens") === "\u2014" && row(result, "30d tokens") === "10",
+    row(result, "\u4eca\u65e5 Token") === "\u2014" &&
+      row(result, "\u8fd1 30 \u5929 Token") === "10",
     "A stale day became today.",
   );
 });
 
 test("zero counts are preserved and absent totals are not reconstructed", async () => {
   const zero = await harness({ history: history([{ date: "2026-07-08", total_token: 0 }]) }).run();
-  check(row(zero, "Today tokens") === "0", "Known zero disappeared.");
+  check(row(zero, "\u4eca\u65e5 Token") === "0", "Known zero disappeared.");
   const absent = await harness({
     history: history([{ date: "2026-07-08", total_input_token: 10, total_output_token: 20 }]),
   }).run();
   check(
-    row(absent, "Today tokens") === "\u2014" && row(absent, "30d tokens") === "\u2014",
+    row(absent, "\u4eca\u65e5 Token") === "\u2014" &&
+      row(absent, "\u8fd1 30 \u5929 Token") === "\u2014",
     "Missing total was invented.",
   );
 });
@@ -415,7 +433,7 @@ test("integer strings and raw JSON integers remain exact above double precision"
   const body = '{"date_model_usage":[{"date":"2026-07-08","total_token":9223372036854775807}]}';
   const result = await harness({ historyResponse: { status: 200, bodyText: body } }).run();
   check(
-    row(result, "Today tokens") === "9,223,372,036,854,775,807",
+    row(result, "\u4eca\u65e5 Token") === "9,223,372,036,854,775,807",
     "Raw JSON integer was rounded.",
   );
   const overflow = await harness({
@@ -425,7 +443,7 @@ test("integer strings and raw JSON integers remain exact above double precision"
     ]),
   }).run();
   check(
-    row(overflow, "30d tokens") === "\u2014",
+    row(overflow, "\u8fd1 30 \u5929 Token") === "\u2014",
     "Aggregate overflow was reported as a valid total.",
   );
 });
@@ -437,7 +455,7 @@ test("conflicting days remain unknown and identical duplicates do not inflate to
       { date: "2026-07-08", total_token: 10 },
     ]),
   }).run();
-  check(row(duplicate, "30d tokens") === "10", "Duplicate day was counted twice.");
+  check(row(duplicate, "\u8fd1 30 \u5929 Token") === "10", "Duplicate day was counted twice.");
   const conflict = await harness({
     history: history([
       { date: "2026-07-08", total_token: 10 },
@@ -445,7 +463,8 @@ test("conflicting days remain unknown and identical duplicates do not inflate to
     ]),
   }).run();
   check(
-    row(conflict, "Today tokens") === "\u2014" && row(conflict, "30d tokens") === "\u2014",
+    row(conflict, "\u4eca\u65e5 Token") === "\u2014" &&
+      row(conflict, "\u8fd1 30 \u5929 Token") === "\u2014",
     "Conflicting data was understated.",
   );
 });
@@ -460,7 +479,7 @@ test("invalid, future, and outside-window dates do not invent chart bars", async
     ]),
   }).run();
   check(
-    row(result, "30d tokens") === "1" && result.details[1].chart.points.length === 1,
+    row(result, "\u8fd1 30 \u5929 Token") === "1" && result.details[1].chart.points.length === 1,
     "Calendar bounds changed.",
   );
 });

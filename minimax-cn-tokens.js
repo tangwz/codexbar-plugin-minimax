@@ -26,7 +26,7 @@
 // Credentials remain in the current host-issued browser session and are never persisted or logged.
 defineProvider({
   id: "minimax-cn-tokens",
-  name: "MiniMax CN Tokens",
+  name: "MiniMax",
   icon: {
     monogram: "MM",
     tint: "#FE603C",
@@ -38,6 +38,34 @@ defineProvider({
   cookieDomains: ["www.minimax.cn"],
 
   async fetchUsage(ctx) {
+    const labels = {
+      sessionQuota: "\u4f1a\u8bdd\u989d\u5ea6",
+      fiveHourQuota: "5 \u5c0f\u65f6\u989d\u5ea6",
+      weeklyQuota: "\u6bcf\u5468\u989d\u5ea6",
+      unlimited: "\u4e0d\u9650\u91cf",
+      subscription: "\u8ba2\u9605\u4fe1\u606f",
+      plan: "\u5957\u9910",
+      sessionRemaining: "\u4f1a\u8bdd\u5269\u4f59\u989d\u5ea6",
+      weeklyRemaining: "\u6bcf\u5468\u5269\u4f59\u989d\u5ea6",
+      quotaUnits: "\u989d\u5ea6\u5355\u4f4d",
+      tokens: "Token \u7528\u91cf",
+      todayTokens: "\u4eca\u65e5 Token",
+      inputTokens: "\u8f93\u5165 Token",
+      outputTokens: "\u8f93\u51fa Token",
+      cacheReadTokens: "\u7f13\u5b58\u8bfb\u53d6",
+      cacheWriteTokens: "\u7f13\u5b58\u5199\u5165",
+      includedInInput: "\u5df2\u5305\u542b\u5728\u8f93\u5165\u4e2d",
+      last30Days: "\u8fd1 30 \u5929 Token",
+      dataUpdated: "\u6570\u636e\u66f4\u65b0",
+      dailyTokens: "\u6bcf\u65e5\u7528\u91cf",
+      history: "\u5386\u53f2\u7528\u91cf",
+      notReported: "\u6682\u65e0\u6570\u636e",
+      noRecords: "\u8fd1 30 \u4e2a\u4e2d\u56fd\u81ea\u7136\u65e5\u6682\u65e0\u8bb0\u5f55",
+      status: "\u72b6\u6001",
+      unavailable: "\u6682\u4e0d\u53ef\u7528",
+      historyUnavailable:
+        "\u989d\u5ea6\u5df2\u52a0\u8f7d\uff0cToken \u7edf\u8ba1\u6682\u4e0d\u53ef\u7528",
+    };
     const domain = "www.minimax.cn";
     const origin = `https://${domain}`;
     const quotaURL = `${origin}/backend/account/token_plan/remains_percent`;
@@ -221,22 +249,27 @@ defineProvider({
       const end = epoch(model[weekly ? "weekly_end_time" : "end_time"]);
       const minutes =
         start && end && end > start ? Math.round((end - start) / 60000) : weekly ? 10080 : 300;
-      const title = weekly ? "Weekly quota" : minutes === 300 ? "5-hour quota" : "Session quota";
+      const title = weekly
+        ? labels.weeklyQuota
+        : minutes === 300
+          ? labels.fiveHourQuota
+          : labels.sessionQuota;
       const window = {
-        title: unlimited ? `${title} (unlimited)` : title,
+        title: unlimited ? `${title} (${labels.unlimited})` : title,
         usedPercent: percent,
         windowMinutes: minutes,
       };
       if (end && end > now) window.resetsAt = end.toISOString();
-      if (unlimited) window.resetDescription = "Unlimited";
-      const row = {
-        label: title,
-        value: unlimited ? "Unlimited" : `${Math.round(percent * 10) / 10}% used`,
-        progress: percent / 100,
-      };
-      if (!unlimited && total !== null && total > 0n && remaining !== null)
-        row.secondaryValue = `${display(remaining)} / ${display(total)} remaining quota units`;
-      return { window, row };
+      if (unlimited) window.resetDescription = labels.unlimited;
+      const remainingRow =
+        !unlimited && total !== null && total > 0n && remaining !== null
+          ? {
+              label: weekly ? labels.weeklyRemaining : labels.sessionRemaining,
+              value: `${display(remaining)} / ${display(total)}`,
+              secondaryValue: labels.quotaUnits,
+            }
+          : null;
+      return { window, remainingRow };
     };
     const parseQuota = (payload) => {
       const data = object(payload.data) ? payload.data : payload;
@@ -253,18 +286,16 @@ defineProvider({
       const interval = quotaLane(model, false);
       const weekly = quotaLane(model, true);
       if (!interval && !weekly) throw invalid();
-      const rows = [interval && interval.row, weekly && weekly.row].filter(Boolean);
+      const rows = [interval?.remainingRow, weekly?.remainingRow].filter(Boolean);
       const plan = boundedText(
         data.current_subscribe_title ||
           data.plan_name ||
           data.current_plan_title ||
           data.combo_title,
       );
-      if (plan) rows.unshift({ label: "Plan", value: plan });
-      rows.push({ label: "Quota model", value: boundedText(model.model_name) });
+      if (plan) rows.unshift({ label: labels.plan, value: plan });
       const result = {
-        details: [{ title: "Coding Plan", rows }],
-        identity: { loginMethod: "MiniMax China browser session" },
+        details: rows.length ? [{ title: labels.subscription, rows }] : [],
         dataConfidence: "percentOnly",
       };
       if (ctx.env?.supportsIconProvider === true) result.iconProvider = "minimax";
@@ -317,12 +348,12 @@ defineProvider({
       const ordered = [...days.values()].sort((a, b) => a.key.localeCompare(b.key));
       if (!ordered.length)
         return {
-          title: "Tokens",
+          title: labels.tokens,
           rows: [
             {
-              label: "History",
-              value: "Not reported",
-              secondaryValue: "No dated token records in the last 30 China calendar days.",
+              label: labels.history,
+              value: labels.notReported,
+              secondaryValue: labels.noRecords,
             },
           ],
         };
@@ -337,30 +368,30 @@ defineProvider({
         }
       }
       const rows = [
-        { label: "Today tokens", value: display(values[0]) },
-        { label: "Input tokens", value: display(values[1]) },
-        { label: "Output tokens", value: display(values[2]) },
+        { label: labels.todayTokens, value: display(values[0]) },
+        { label: labels.inputTokens, value: display(values[1]) },
+        { label: labels.outputTokens, value: display(values[2]) },
         {
-          label: "Cache read tokens",
+          label: labels.cacheReadTokens,
           value: display(values[3]),
-          secondaryValue: "Included in input tokens",
+          secondaryValue: labels.includedInInput,
         },
-        { label: "Cache write tokens", value: display(values[4]) },
+        { label: labels.cacheWriteTokens, value: display(values[4]) },
         {
-          label: "30d tokens",
+          label: labels.last30Days,
           value: display(total),
-          secondaryValue: `${ordered.length} reported days`,
+          secondaryValue: "\u5df2\u62a5\u544a " + ordered.length + " \u5929",
         },
       ];
       const updated = boundedText(data.last_update_time, 64);
       if (updated && /^[\x20-\x7e]+$/.test(updated))
-        rows.push({ label: "Data updated", value: updated });
+        rows.push({ label: labels.dataUpdated, value: updated });
       const points = ordered
         .filter((day) => day.values[0] !== null)
         .map((day) => ({ label: day.key, value: Number(day.values[0]) }));
-      const section = { title: "Tokens", rows };
+      const section = { title: labels.tokens, rows };
       if (points.length)
-        section.chart = { kind: "bars", title: "Daily tokens", unit: "tokens", points };
+        section.chart = { kind: "bars", title: labels.dailyTokens, unit: "Token", points };
       return section;
     };
 
@@ -405,12 +436,12 @@ defineProvider({
       } catch (error) {
         if (cancelled(error)) throw error;
         tokens = {
-          title: "Tokens",
+          title: labels.tokens,
           rows: [
             {
-              label: "Status",
-              value: "Unavailable",
-              secondaryValue: "Quota loaded; token statistics could not be retrieved.",
+              label: labels.status,
+              value: labels.unavailable,
+              secondaryValue: labels.historyUnavailable,
             },
           ],
         };
