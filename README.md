@@ -35,6 +35,14 @@ cp minimax-cn-tokens.js "$HOME/.config/codexbar/providers/minimax-cn-tokens.js"
 
 更新同名插件文件后，先点击 Plugins 页面顶部的目录 **Refresh** 重新载入代码，再点击插件自己的 **Refresh** 查询用量。只点击插件内的刷新可能继续使用旧实例。
 
+## 全局统计与分享的兼容性
+
+**目前不会纳入 CodexBar 的“用量与支出”、Token 活动总计或“分享统计数据”。** 插件自己的配额、Token 明细和日图属于独立提供商卡片，不能视为已经接入全局汇总。
+
+2026-11-14 在 CodexBar 0.84.0 中实测：统计来源列表和分享预览均未包含 MiniMax CN Tokens。上游的[统计入口](https://github.com/steipete/CodexBar/blob/621082f0212d380b3710056769949a1830a473c4/Sources/CodexBar/SpendDashboard/SpendDashboardController.swift#L667-L672)只枚举内置提供商，[分享数据](https://github.com/steipete/CodexBar/blob/621082f0212d380b3710056769949a1830a473c4/Sources/CodexBar/ShareStatsPayload.swift#L219-L233)复用统计模型。
+
+接入这些功能需要 CodexBar 本体支持社区插件的结构化 Token 历史和动态提供商汇总，不能仅靠修改本插件实现。现有 `costUsage` 契约还要求费用和请求数字段，不能用零费用或零请求冒充未报告的数据。当前仓库尚未完成这项集成。
+
 ## 会话与数据行为
 
 插件每次刷新都向 CodexBar 请求浏览器会话，配额和 Token 请求使用同一份 Cookie 与同一 group。它不会跨浏览器或账号拼接凭据，也不保存 Cookie、令牌或 group，不输出这些值。
