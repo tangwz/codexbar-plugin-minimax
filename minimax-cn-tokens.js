@@ -282,7 +282,7 @@ defineProvider({
       date.setUTCHours(0, 0, 0, 0);
       return dateKey(date) === key ? date : null;
     };
-    const parseHistory = (payload) => {
+    const parseHistory = (payload, snapshot) => {
       const data = object(payload.data) ? payload.data : payload;
       const records = data.date_model_usage;
       if (records !== undefined && records !== null && !Array.isArray(records)) throw invalid();
@@ -335,6 +335,20 @@ defineProvider({
           total += day.values[0];
           if (total > maxCount) total = null;
         }
+      }
+      const knownTotal = ordered.reduce((sum, day) => sum + (day.values[0] ?? 0n), 0n);
+      if (ctx.env?.supportsCostUsageV2 === true && knownTotal <= maxCount) {
+        const keys = ["totalTokens", "inputTokens", "outputTokens", "cacheReadTokens", "cacheCreationTokens"];
+        snapshot.costUsage = {
+          version: 2,
+          timeZone: "Asia/Shanghai",
+          windowStart: startKey,
+          windowEnd: todayKey,
+          entries: ordered.map((day) => ({
+            date: day.key,
+            ...Object.fromEntries(keys.map((key, index) => [key, day.values[index]?.toString() ?? null])),
+          })),
+        };
       }
       const rows = [
         { label: "Today tokens", value: display(values[0]) },
@@ -400,7 +414,7 @@ defineProvider({
       let tokens;
       try {
         const response = await ctx.http.get(historyURL, { headers, timeoutSeconds: 5 });
-        tokens = parseHistory(checkResponse(response));
+        tokens = parseHistory(checkResponse(response), snapshot);
         if (tokens.chart) snapshot.dataConfidence = "exact";
       } catch (error) {
         if (cancelled(error)) throw error;

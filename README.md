@@ -43,7 +43,9 @@ cp minimax-cn-tokens.js "$HOME/.config/codexbar/providers/minimax-cn-tokens.js"
 
 2026-11-14 在 CodexBar 0.84.0 中实测：统计来源列表和分享预览均未包含 MiniMax CN Tokens。上游的[统计入口](https://github.com/steipete/CodexBar/blob/621082f0212d380b3710056769949a1830a473c4/Sources/CodexBar/SpendDashboard/SpendDashboardController.swift#L667-L672)只枚举内置提供商，[分享数据](https://github.com/steipete/CodexBar/blob/621082f0212d380b3710056769949a1830a473c4/Sources/CodexBar/ShareStatsPayload.swift#L219-L233)复用统计模型。
 
-接入这些功能需要 CodexBar 本体支持社区插件的结构化 Token 历史和动态提供商汇总，不能仅靠修改本插件实现。现有 `costUsage` 契约还要求费用和请求数字段，不能用零费用或零请求冒充未报告的数据。当前仓库尚未完成这项集成。
+接入这些功能需要 CodexBar 本体支持社区插件的结构化 Token 历史和动态提供商汇总，不能仅靠修改本插件实现。现有 `costUsage` 契约还要求费用和请求数字段，不能用零费用或零请求冒充未报告的数据。当前分支已提供能力探测保护的 `costUsage` v2 适配；只有 host 声明 `ctx.env.supportsCostUsageV2 === true` 时才发送结构化历史。上游支持尚未发布，现有 0.84.0 安装继续只显示独立卡片。
+
+结构化历史保留服务端直接报告的总量、输入、输出和缓存字段，整数使用十进制字符串传输，日期固定为 `Asia/Shanghai`。缺失日期不补零，未知费用、请求数和币种不伪造；无法安全汇总的溢出历史不会发送给 host。
 
 ## 会话与数据行为
 

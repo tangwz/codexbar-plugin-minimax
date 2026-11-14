@@ -471,6 +471,35 @@ test("malformed JSON is never made valid by number preservation", async () => {
   check(h.calls.length === 1, "Invalid quota was used for history.");
 });
 
+test("structured history is capability gated and preserves server token semantics", async () => {
+  for (const env of [undefined, {}, { supportsCostUsageV2: false }]) {
+    check(!(await harness({ env }).run()).costUsage, "Old hosts received new history fields.");
+  }
+  const result = await harness({ env: { supportsCostUsageV2: true } }).run();
+  const usage = result.costUsage;
+  check(usage.version === 2 && usage.timeZone === "Asia/Shanghai", "Missing protocol or calendar.");
+  check(usage.windowStart === "2026-06-09" && usage.windowEnd === "2026-07-08", "Wrong window.");
+  check(usage.entries.length === 1 && usage.entries[0].totalTokens === "1200", "Fabricated daily coverage.");
+  check(usage.entries[0].inputTokens === "1000" && usage.entries[0].cacheReadTokens === "400", "Cache was added twice.");
+  check(!("currency" in usage) && !("cost" in usage.entries[0]) && !("requests" in usage.entries[0]), "Unknown metrics were invented.");
+});
+
+test("structured history retains exact counts and omits overflowing history", async () => {
+  const exact = await harness({
+    env: { supportsCostUsageV2: true },
+    history: history([{ date: "2026-07-08", total_token: "9007199254740993" }]),
+  }).run();
+  check(exact.costUsage.entries[0].totalTokens === "9007199254740993", "Integer precision was lost.");
+  const overflow = await harness({
+    env: { supportsCostUsageV2: true },
+    history: history([
+      { date: "2026-07-07", total_token: "9223372036854775807" },
+      { date: "2026-07-08", total_token: "1" },
+    ]),
+  }).run();
+  check(!overflow.costUsage && overflow.primary, "An overflowing history could fail the quota snapshot.");
+});
+
 for (const { name, operation } of tests) {
   try {
     await operation();
