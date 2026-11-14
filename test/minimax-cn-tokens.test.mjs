@@ -83,6 +83,7 @@ function harness(options = {}) {
     ].map((category) => [category, (message) => Object.assign(new Error(message), { category })]),
   );
   const ctx = {
+    env: options.env,
     date: { now: () => new Date(options.now || fixedNow) },
     fail: failures,
     log: () => {
@@ -153,6 +154,26 @@ test("manifest is standalone, fixed-origin, and has no persistent credential set
     definition.settings.length === 0 && !definition.capabilities.includes("persistent-storage"),
     "Credentials must not be persisted.",
   );
+});
+
+test("supported hosts use built-in MiniMax branding", async () => {
+  const result = await harness({ env: { supportsIconProvider: true } }).run();
+  check(result.iconProvider === "minimax", "Built-in MiniMax branding was not selected.");
+});
+
+test("legacy hosts omit unsupported snapshot branding", async () => {
+  for (const env of [
+    undefined,
+    {},
+    { supportsIconProvider: false },
+    { supportsIconProvider: "true" },
+  ]) {
+    const result = await harness({ env }).run();
+    check(
+      !Object.prototype.hasOwnProperty.call(result, "iconProvider"),
+      "An unsupported snapshot field would break legacy fetches.",
+    );
+  }
 });
 
 test("quota and token statistics use the same complete session", async () => {
